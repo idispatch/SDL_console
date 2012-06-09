@@ -14,13 +14,11 @@
 				</externalSettings>
 				<extensions>
 					<extension id="com.qnx.tools.ide.qde.core.QDEBynaryParser" point="org.eclipse.cdt.core.BinaryParser"/>
-					<extension id="com.qnx.tools.ide.qde.core.QDELinkerErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 					<extension id="org.eclipse.cdt.core.GCCErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
-					<extension id="org.eclipse.cdt.core.GLDErrorParser" point="org.eclipse.cdt.core.ErrorParser"/>
 				</extensions>
 			</storageModule>
 			<storageModule moduleId="cdtBuildSystem" version="4.0.0">
-				<configuration artifactExtension="so" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.sharedLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.sharedLib" description="" id="com.qnx.qcc.configuration.sharedLib.debug.35042474" name="Debug" parent="com.qnx.qcc.configuration.sharedLib.debug">
+				<configuration artifactExtension="a" artifactName="${ProjName}" buildArtefactType="org.eclipse.cdt.build.core.buildArtefactType.staticLib" buildProperties="org.eclipse.cdt.build.core.buildType=org.eclipse.cdt.build.core.buildType.debug,org.eclipse.cdt.build.core.buildArtefactType=org.eclipse.cdt.build.core.buildArtefactType.staticLib" description="" id="com.qnx.qcc.configuration.sharedLib.debug.35042474" name="Debug" parent="com.qnx.qcc.configuration.sharedLib.debug">
 					<folderInfo id="com.qnx.qcc.configuration.sharedLib.debug.35042474." name="/" resourcePath="">
 						<toolChain id="com.qnx.qcc.toolChain.sharedLib.debug.535719389" name="QNX QCC" superClass="com.qnx.qcc.toolChain.sharedLib.debug">
 							<option id="com.qnx.qcc.option.cpu.1786288036" name="Target CPU:" superClass="com.qnx.qcc.option.cpu" value="com.qnx.qcc.option.gen.cpu.armle-v7" valueType="enumerated"/>
@@ -33,6 +31,7 @@
 								<option id="com.qnx.qcc.option.compiler.includePath.1955471633" name="Include Directories (-I)" superClass="com.qnx.qcc.option.compiler.includePath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/console/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SDL12/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SDL_console/src}&quot;"/>
 								</option>
 								<option id="com.qnx.qcc.option.compiler.defines.42534928" name="Defines (-D)" superClass="com.qnx.qcc.option.compiler.defines" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__PLAYBOOK__"/>
@@ -88,8 +87,9 @@
 								<option id="com.qnx.qcc.option.compiler.includePath.902213757" name="Include Directories (-I)" superClass="com.qnx.qcc.option.compiler.includePath" valueType="includePath">
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/console/src}&quot;"/>
 									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SDL12/include}&quot;"/>
+									<listOptionValue builtIn="false" value="&quot;${workspace_loc:/SDL_console/src}&quot;"/>
 								</option>
-								<option id="com.qnx.qcc.option.compiler.defines.1890627802" superClass="com.qnx.qcc.option.compiler.defines" valueType="definedSymbols">
+								<option id="com.qnx.qcc.option.compiler.defines.1890627802" name="Defines (-D)" superClass="com.qnx.qcc.option.compiler.defines" valueType="definedSymbols">
 									<listOptionValue builtIn="false" value="__PLAYBOOK__"/>
 								</option>
 								<inputType id="com.qnx.qcc.inputType.compiler.1914498074" superClass="com.qnx.qcc.inputType.compiler"/>
@@ -130,5 +130,8 @@
 			<autodiscovery enabled="true" problemReportingEnabled="true" selectedProfileId="com.qnx.tools.ide.qde.managedbuilder.core.qccScannerInfo"/>
 		</scannerConfigBuildInfo>
 	</storageModule>
-	<storageModule moduleId="refreshScope"/>
+	<storageModule moduleId="refreshScope" versionNumber="1">
+		<resource resourceType="PROJECT" workspacePath="/SDL_console"/>
+	</storageModule>
+	<storageModule moduleId="org.eclipse.cdt.internal.ui.text.commentOwnerProjectMappings"/>
 </cproject>

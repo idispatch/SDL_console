@@ -106,8 +106,10 @@ static void console_render_callback(console_t console, console_update_t * u, voi
                     u->data.u_char.y,
                     u->data.u_char.c,
                     u->data.u_char.a);
+#ifdef _DEBUG
         fprintf(stdout, "CONSOLE_UPDATE_CHAR: [%d,%d]=%c\n", u->data.u_char.x, u->data.u_char.y, u->data.u_char.c);
         fflush(stdout);
+#endif
         break;
     case CONSOLE_UPDATE_ROWS:
         break;
@@ -150,12 +152,14 @@ static void console_render_callback(console_t console, console_update_t * u, voi
         }
         break;
     case CONSOLE_UPDATE_CURSOR_POSITION:
+#ifdef _DEBUG
         fprintf(stdout, "CONSOLE_UPDATE_CURSOR_POSITION: [%d,%d->%d,%d]=%d\n",
                 u->data.u_cursor.x, u->data.u_cursor.y,
                 console_get_cursor_x(console),
                 console_get_cursor_y(console),
                 (int)u->data.u_cursor.cursor_visible);
         fflush(stdout);
+#endif
         render_char(console,
                     screen,
                     u->data.u_cursor.x,
@@ -272,13 +276,18 @@ void SDL_console_init(){
 
     g_cursor_color = SDL_MapRGB(g_screenSurface->format, 255, 255, 255);
     render_init_font(g_console, g_screenSurface);
-
+#if 0
     g_consoleThread = SDL_CreateThread(console_render_thread, NULL);
     if (g_consoleThread == NULL ) {
         fprintf(stderr, "Unable to create thread: %s\n", SDL_GetError());
         fflush(stderr);
         return;
     }
+#endif
+}
+
+void SDL_console_run() {
+    console_render_thread(NULL);
 }
 
 void SDL_console_done() {
