@@ -3,6 +3,7 @@
 	<name>SDL_console</name>
 	<comment></comment>
 	<projects>
+		<project>console</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

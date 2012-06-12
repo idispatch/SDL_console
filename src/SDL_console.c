@@ -6,7 +6,7 @@
 static SDL_Thread  *g_consoleThread = NULL;
 static SDL_Surface *g_screenSurface = NULL;
 static console_t g_console = NULL;
-
+static bool g_ownConsole = false;
 static Uint32 g_cursor_color;
 static Uint32 g_palette[CONSOLE_NUM_PALETTE_ENTRIES];
 static unsigned char * g_fontBitmap = NULL;
@@ -31,7 +31,7 @@ static void render_init_font(console_t console, SDL_Surface * dst) {
     g_fontBitmap = malloc(bytes);
     unsigned char * char_data_ptr = g_fontBitmap;
     for(c = 0; c < 256; c++) {
-        unsigned char const * char_bitmap = console_get_char_bitmap(console, (unsigned char)c);
+        unsigned char const * char_bitmap = console_get_char_bitmap(console, c);
         unsigned y;
         for (y = 0; y < charHeight; ++y) {
             unsigned char mask = 0x80;
@@ -55,7 +55,7 @@ static void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16
     SDL_FillRect(dst, &d, g_cursor_color);
 }
 
-static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, char c, unsigned char a) {
+static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, unsigned char c, unsigned char a) {
     Uint32 foreColor = g_palette[a & 0xf];
     Uint32 backColor = g_palette[a >> 4];
     if (SDL_LockSurface(dst) != 0)
@@ -67,7 +67,7 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
     unsigned charHeight = console_get_char_height(console);
     Uint8 * pixels = (Uint8 *)dst->pixels + y * charHeight * dst->pitch + x * charWidth * bpp;
     Uint16 pitch = dst->pitch;
-    unsigned char * bitmap_data = g_fontBitmap + c * charWidth * charHeight * sizeof(unsigned char);
+    unsigned char * bitmap_data = g_fontBitmap + ((unsigned)c) * charWidth * charHeight * sizeof(unsigned char);
     for (cy = 0; cy < charHeight; ++cy) {
         Uint32 * dst_ptr = (Uint32*)pixels;
         for (cx = 0; cx < charWidth; ++cx) {
@@ -180,15 +180,18 @@ static void console_render_callback(console_t console, console_update_t * u, voi
     }
 }
 
-static int console_render_thread(void * data) {
-    bool bDone = false;
-    while (!bDone) {
+static int console_render_loop(void * data) {
+    while (SDL_console_run_frames(1) >= 0);
+    return 0;
+}
+
+int SDL_console_run_frames(unsigned frameCount) {
+    for(;frameCount > 0; --frameCount) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch(event.type) {
             case SDL_QUIT:
-                bDone = true;
-                break;
+                return -1;
             case SDL_KEYDOWN:
                 if(isascii(event.key.keysym.unicode) &&
                    isprint(event.key.keysym.unicode & 0xff)) {
@@ -241,7 +244,7 @@ static int console_render_thread(void * data) {
     return 0;
 }
 
-void SDL_console_init(){
+void SDL_console_init(console_t console){
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         printf("Unable to initialize SDL: %s\n", SDL_GetError());
         exit(1);
@@ -261,7 +264,13 @@ void SDL_console_init(){
 
     SDL_ShowCursor(0);
 
-    g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
+    if(console == NULL) {
+        g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
+        g_ownConsole = true;
+    } else {
+        g_console = console;
+        g_ownConsole = false;
+    }
     console_set_font(g_console, FONT_8x16);
     console_set_callback(g_console, console_render_callback, g_screenSurface);
     console_clear(g_console);
@@ -286,8 +295,12 @@ void SDL_console_init(){
 #endif
 }
 
+console_t SDL_console_get() {
+    return g_console;
+}
+
 void SDL_console_run() {
-    console_render_thread(NULL);
+    console_render_loop(NULL);
 }
 
 void SDL_console_done() {
@@ -298,7 +311,10 @@ void SDL_console_done() {
 
     if(g_console) {
         console_set_callback(g_console, NULL, NULL);
-        console_free(g_console);
+        if(g_ownConsole) {
+            console_free(g_console);
+            g_ownConsole = false;
+        }
         g_console = NULL;
     }
     if(g_screenSurface) {
