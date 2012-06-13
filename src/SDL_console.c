@@ -6,6 +6,9 @@
 static SDL_Thread  *g_consoleThread = NULL;
 static SDL_Surface *g_screenSurface = NULL;
 static console_t g_console = NULL;
+static int g_mouse_x = 0;
+static int g_mouse_y = 0;
+static unsigned char g_mouse_button = 0;
 static bool g_ownConsole = false;
 static Uint32 g_cursor_color;
 static Uint32 g_palette[CONSOLE_NUM_PALETTE_ENTRIES];
@@ -56,10 +59,21 @@ static void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16
 }
 
 static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, unsigned char c, unsigned char a) {
-    Uint32 foreColor = g_palette[a & 0xf];
-    Uint32 backColor = g_palette[a >> 4];
     if (SDL_LockSurface(dst) != 0)
         return;
+    Uint32 foreColor = g_palette[a & 0xf];
+    Uint32 backColor = g_palette[a >> 4];
+#if 0
+    fprintf(stdout,
+            "render_char: [%d,%d]=%u[attr:0x%02x, fore:0x%06X, back:0x%06X]\n",
+            (unsigned)x,
+            (unsigned)y,
+            (unsigned)c,
+            (unsigned)a,
+            foreColor,
+            backColor);
+    fflush(stdout);
+#endif
     unsigned bpp = dst->format->BytesPerPixel;
     unsigned cx;
     unsigned cy;
@@ -106,8 +120,13 @@ static void console_render_callback(console_t console, console_update_t * u, voi
                     u->data.u_char.y,
                     u->data.u_char.c,
                     u->data.u_char.a);
-#ifdef _DEBUG
-        fprintf(stdout, "CONSOLE_UPDATE_CHAR: [%d,%d]=%c\n", u->data.u_char.x, u->data.u_char.y, u->data.u_char.c);
+#if 0
+        fprintf(stdout,
+                "UPDATE_CHAR: [%d,%d]=%u[0x%02x]\n",
+                u->data.u_char.x,
+                u->data.u_char.y,
+                (unsigned)(u->data.u_char.c),
+                (unsigned)(u->data.u_char.a));
         fflush(stdout);
 #endif
         break;
@@ -152,8 +171,8 @@ static void console_render_callback(console_t console, console_update_t * u, voi
         }
         break;
     case CONSOLE_UPDATE_CURSOR_POSITION:
-#ifdef _DEBUG
-        fprintf(stdout, "CONSOLE_UPDATE_CURSOR_POSITION: [%d,%d->%d,%d]=%d\n",
+#if 0
+        fprintf(stdout, "CURSOR_POSITION: [%d,%d->%d,%d]=%d\n",
                 u->data.u_cursor.x, u->data.u_cursor.y,
                 console_get_cursor_x(console),
                 console_get_cursor_y(console),
@@ -185,14 +204,93 @@ static int console_render_loop(void * data) {
     return 0;
 }
 
+int SDL_console_get_mouse_x() {
+    return g_mouse_x;
+}
+
+int SDL_console_get_mouse_y() {
+    return g_mouse_y;
+}
+
+unsigned char SDL_console_get_mouse_button() {
+    return g_mouse_button;
+}
+
 int SDL_console_run_frames(unsigned frameCount) {
     for(;frameCount > 0; --frameCount) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch(event.type) {
             case SDL_QUIT:
+#ifdef _DEBUG
+                fprintf(stdout, "%s: SDL_QUIT\n", __FUNCTION__);
+                fflush(stdout);
+#endif
                 return -1;
+            case SDL_MOUSEBUTTONDOWN:
+#ifdef _DEBUG
+                fprintf(stdout,
+                        "%s: SDL_MOUSEBUTTONDOWN, which=%d, [%d,%d]=%d\n",
+                        __FUNCTION__,
+                        event.button.which,
+                        event.button.x / console_get_char_width(g_console),
+                        event.button.y / console_get_char_height(g_console),
+                        event.button.button);
+                fflush(stdout);
+#endif
+                if(event.button.which == 0) {
+                    g_mouse_x = event.button.x / console_get_char_width(g_console);
+                    g_mouse_y = event.button.y / console_get_char_height(g_console);
+                    g_mouse_button |= event.button.button;
+                }
+                break;
+            case SDL_MOUSEBUTTONUP:
+#ifdef _DEBUG
+                fprintf(stdout,
+                        "%s: SDL_MOUSEBUTTONUP, which=%d, [%d,%d]=%d\n",
+                        __FUNCTION__,
+                        event.button.which,
+                        event.button.x / console_get_char_width(g_console),
+                        event.button.y / console_get_char_height(g_console),
+                        event.button.button);
+                fflush(stdout);
+#endif
+                if(event.button.which == 0) {
+                    g_mouse_x = event.button.x / console_get_char_width(g_console);
+                    g_mouse_y = event.button.y / console_get_char_height(g_console);
+                    g_mouse_button &= ~event.button.button;
+                }
+                break;
+            case SDL_MOUSEMOTION:
+#ifdef _DEBUG
+                fprintf(stdout,
+                        "%s: SDL_MOUSEMOTION, which=%d, [%d,%d]\n",
+                        __FUNCTION__,
+                        event.motion.which,
+                        event.motion.x / console_get_char_width(g_console),
+                        event.motion.y / console_get_char_height(g_console));
+                fflush(stdout);
+#endif
+                if(event.motion.which == 0) {
+                    g_mouse_x = event.motion.x / console_get_char_width(g_console);
+                    g_mouse_y = event.motion.y / console_get_char_height(g_console);
+                    g_mouse_button = event.motion.state;
+                }
+                break;
             case SDL_KEYDOWN:
+#ifdef _DEBUG
+                fprintf(stdout,
+                        "%s: %s, %s, which=%d, scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X\n",
+                        __FUNCTION__,
+                        (event.key.type == SDL_KEYDOWN ? "SDL_KEYDOWN" : "SDL_KEYUP"),
+                        (event.key.state == SDL_PRESSED ? "SDL_PRESSED" : "SDL_RELEASED"),
+                        event.key.which,
+                        event.key.keysym.scancode,
+                        event.key.keysym.sym,
+                        event.key.keysym.mod,
+                        event.key.keysym.unicode);
+                fflush(stdout);
+#endif
                 if(isascii(event.key.keysym.unicode) &&
                    isprint(event.key.keysym.unicode & 0xff)) {
                     static unsigned char c = 0;
@@ -235,6 +333,27 @@ int SDL_console_run_frames(unsigned frameCount) {
                     break;
                 }
                 break;
+            case SDL_KEYUP:
+#ifdef _DEBUG
+                fprintf(stdout,
+                        "%s: %s, %s, which=%d, scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X\n",
+                        __FUNCTION__,
+                        (event.key.type == SDL_KEYDOWN ? "SDL_KEYDOWN" : "SDL_KEYUP"),
+                        (event.key.state == SDL_PRESSED ? "SDL_PRESSED" : "SDL_RELEASED"),
+                        event.key.which,
+                        event.key.keysym.scancode,
+                        event.key.keysym.sym,
+                        event.key.keysym.mod,
+                        event.key.keysym.unicode);
+                fflush(stdout);
+#endif
+                break;
+            default:
+#ifdef _DEBUG
+                fprintf(stdout, "%s: event type %d\n", __FUNCTION__, (int)event.type);
+                fflush(stdout);
+#endif
+                break;
             }
         }
 
@@ -261,9 +380,9 @@ void SDL_console_init(console_t console){
                 SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, SDL_GetError());
         exit(1);
     }
-
+#if 0
     SDL_ShowCursor(0);
-
+#endif
     if(console == NULL) {
         g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
         g_ownConsole = true;
