@@ -48,14 +48,16 @@ static void render_init_font(console_t console, SDL_Surface * dst) {
 }
 
 static void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y) {
-    unsigned char_width = console_get_char_width(console);
-    unsigned char_height = console_get_char_height(console);
-    SDL_Rect d;
-    d.x = x * char_width;
-    d.y = (y + 1) * char_height - 3;
-    d.w = char_width;
-    d.h = 2;
-    SDL_FillRect(dst, &d, g_cursor_color);
+    if(console_cursor_is_visible(console)) {
+        unsigned char_width = console_get_char_width(console);
+        unsigned char_height = console_get_char_height(console);
+        SDL_Rect d;
+        d.x = x * char_width;
+        d.y = (y + 1) * char_height - 3;
+        d.w = char_width;
+        d.h = 2;
+        SDL_FillRect(dst, &d, g_cursor_color);
+    }
 }
 
 static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, unsigned char c, unsigned char a) {
