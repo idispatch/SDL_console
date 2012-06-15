@@ -14,9 +14,14 @@ static Uint32 g_cursor_color;
 static Uint32 g_palette[CONSOLE_NUM_PALETTE_ENTRIES];
 static unsigned char * g_fontBitmap = NULL;
 
+static const int SCREEN_BPP = 32;
+#if defined(__ARM__) && defined(__QNXNTO__)
 static const int SCREEN_WIDTH = 1024;
 static const int SCREEN_HEIGHT = 600;
-static const int SCREEN_BPP = 32;
+#else
+static const int SCREEN_WIDTH = 800;
+static const int SCREEN_HEIGHT = 600;
+#endif
 
 static Uint32 render_get_background_color(console_t console) {
     return g_palette[console_get_background_color(console)];
@@ -65,6 +70,7 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
         return;
     Uint32 foreColor = g_palette[a & 0xf];
     Uint32 backColor = g_palette[a >> 4];
+#ifdef _DEBUG
 #if 0
     fprintf(stdout,
             "render_char: [%d,%d]=%u[attr:0x%02x, fore:0x%06X, back:0x%06X]\n",
@@ -75,6 +81,7 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
             foreColor,
             backColor);
     fflush(stdout);
+#endif
 #endif
     unsigned bpp = dst->format->BytesPerPixel;
     unsigned cx;
@@ -122,14 +129,16 @@ static void console_render_callback(console_t console, console_update_t * u, voi
                     u->data.u_char.y,
                     u->data.u_char.c,
                     u->data.u_char.a);
+#ifdef _DEBUG
 #if 0
         fprintf(stdout,
-                "UPDATE_CHAR: [%d,%d]=%u[0x%02x]\n",
+                "UPDATE_CHAR: [x=%d,y=%d,c=%u,a=0x%02x]\n",
                 u->data.u_char.x,
                 u->data.u_char.y,
                 (unsigned)(u->data.u_char.c),
                 (unsigned)(u->data.u_char.a));
         fflush(stdout);
+#endif
 #endif
         break;
     case CONSOLE_UPDATE_ROWS:
@@ -173,13 +182,16 @@ static void console_render_callback(console_t console, console_update_t * u, voi
         }
         break;
     case CONSOLE_UPDATE_CURSOR_POSITION:
+#ifdef _DEBUG
 #if 0
-        fprintf(stdout, "CURSOR_POSITION: [%d,%d->%d,%d]=%d\n",
-                u->data.u_cursor.x, u->data.u_cursor.y,
+        fprintf(stdout, "CURSOR_POSITION: [x=%d,y=%d->x=%d,y=%d] v=%d\n",
+                u->data.u_cursor.x,
+                u->data.u_cursor.y,
                 console_get_cursor_x(console),
                 console_get_cursor_y(console),
                 (int)u->data.u_cursor.cursor_visible);
         fflush(stdout);
+#endif
 #endif
         render_char(console,
                     screen,
@@ -232,7 +244,7 @@ int SDL_console_run_frames(unsigned frameCount) {
             case SDL_MOUSEBUTTONDOWN:
 #ifdef _DEBUG
                 fprintf(stdout,
-                        "%s: SDL_MOUSEBUTTONDOWN, which=%d, [%d,%d]=%d\n",
+                        "%s: SDL_MOUSEBUTTONDOWN, which=%d, [x=%d,y=%d,b=%d]\n",
                         __FUNCTION__,
                         event.button.which,
                         event.button.x / console_get_char_width(g_console),
@@ -249,7 +261,7 @@ int SDL_console_run_frames(unsigned frameCount) {
             case SDL_MOUSEBUTTONUP:
 #ifdef _DEBUG
                 fprintf(stdout,
-                        "%s: SDL_MOUSEBUTTONUP, which=%d, [%d,%d]=%d\n",
+                        "%s: SDL_MOUSEBUTTONUP, which=%d, [x=%d,y=%d,b=%d]\n",
                         __FUNCTION__,
                         event.button.which,
                         event.button.x / console_get_char_width(g_console),
@@ -266,7 +278,7 @@ int SDL_console_run_frames(unsigned frameCount) {
             case SDL_MOUSEMOTION:
 #ifdef _DEBUG
                 fprintf(stdout,
-                        "%s: SDL_MOUSEMOTION, which=%d, [%d,%d]\n",
+                        "%s: SDL_MOUSEMOTION, which=%d, [x=%d,y=%d]\n",
                         __FUNCTION__,
                         event.motion.which,
                         event.motion.x / console_get_char_width(g_console),
@@ -282,7 +294,7 @@ int SDL_console_run_frames(unsigned frameCount) {
             case SDL_KEYDOWN:
 #ifdef _DEBUG
                 fprintf(stdout,
-                        "%s: %s, %s, which=%d, scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X\n",
+                        "%s: %s, %s, which=%d [scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X]\n",
                         __FUNCTION__,
                         (event.key.type == SDL_KEYDOWN ? "SDL_KEYDOWN" : "SDL_KEYUP"),
                         (event.key.state == SDL_PRESSED ? "SDL_PRESSED" : "SDL_RELEASED"),
@@ -293,6 +305,7 @@ int SDL_console_run_frames(unsigned frameCount) {
                         event.key.keysym.unicode);
                 fflush(stdout);
 #endif
+#if 0
                 if(isascii(event.key.keysym.unicode) &&
                    isprint(event.key.keysym.unicode & 0xff)) {
                     static unsigned char c = 0;
@@ -334,11 +347,12 @@ int SDL_console_run_frames(unsigned frameCount) {
                     }
                     break;
                 }
+#endif
                 break;
             case SDL_KEYUP:
 #ifdef _DEBUG
                 fprintf(stdout,
-                        "%s: %s, %s, which=%d, scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X\n",
+                        "%s: %s, %s, which=%d [scancode=0x%02x, sym=%d, mode=%d, unicode=0x%X]\n",
                         __FUNCTION__,
                         (event.key.type == SDL_KEYDOWN ? "SDL_KEYDOWN" : "SDL_KEYUP"),
                         (event.key.state == SDL_PRESSED ? "SDL_PRESSED" : "SDL_RELEASED"),
@@ -367,7 +381,7 @@ int SDL_console_run_frames(unsigned frameCount) {
 
 void SDL_console_init(console_t console){
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
-        printf("Unable to initialize SDL: %s\n", SDL_GetError());
+        printf("%s: Unable to initialize SDL: %s\n", __FUNCTION__, SDL_GetError());
         exit(1);
     }
 
@@ -378,13 +392,15 @@ void SDL_console_init(console_t console){
                                        flags);
 
     if (g_screenSurface == NULL) {
-        printf("Unable to set %dx%dx%d video: %s\n",
-                SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_BPP, SDL_GetError());
+        printf("%s: Unable to set %dx%dx%d video mode: %s\n",
+                __FUNCTION__,
+                SCREEN_WIDTH,
+                SCREEN_HEIGHT,
+                SCREEN_BPP,
+                SDL_GetError());
         exit(1);
     }
-#if 0
-    SDL_ShowCursor(0);
-#endif
+
     if(console == NULL) {
         g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
         g_ownConsole = true;
