@@ -1,4 +1,5 @@
-Debug
-Release
+Device-Debug
+Device-Release
+Simulator-Debug
 .DS_Store
 .settings
