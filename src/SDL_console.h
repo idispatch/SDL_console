@@ -7,7 +7,7 @@ extern "C" {
 
 #include <console.h>
 
-void SDL_console_init(console_t console);
+console_t SDL_console_init(console_t console, font_id_t font);
 console_t SDL_console_get();
 void SDL_console_run();
 int SDL_console_run_frames(unsigned frameCount);

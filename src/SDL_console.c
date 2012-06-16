@@ -42,12 +42,17 @@ static void render_init_font(console_t console, SDL_Surface * dst) {
         unsigned char const * char_bitmap = console_get_char_bitmap(console, c);
         unsigned y;
         for (y = 0; y < charHeight; ++y) {
-            unsigned char mask = 0x80;
-            unsigned char b = *char_bitmap;
-            unsigned x;
-            for (x = 0; x < charWidth; ++x, mask >>= 1)
-                *char_data_ptr++ = (mask & b) ? 255 : 0;
-            char_bitmap += 1;
+            unsigned cw = charWidth;
+            do {
+                unsigned x;
+                unsigned char mask = 0x80;
+                unsigned n = cw <= 8 ? cw : 8;
+                unsigned char b = *char_bitmap;
+                for (x = 0; x < n; ++x, mask >>= 1)
+                    *char_data_ptr++ = (mask & b) ? 255 : 0;
+                char_bitmap += 1;
+                cw -= n;
+            } while (cw > 0);
         }
     }
 }
@@ -68,8 +73,8 @@ static void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16
 static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, unsigned char c, unsigned char a) {
     if (SDL_LockSurface(dst) != 0)
         return;
-    Uint32 foreColor = g_palette[a & 0xf];
-    Uint32 backColor = g_palette[a >> 4];
+    const Uint32 foreColor = g_palette[a & 0xf];
+    const Uint32 backColor = g_palette[a >> 4];
 #ifdef _DEBUG
 #if 0
     fprintf(stdout,
@@ -83,14 +88,14 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
     fflush(stdout);
 #endif
 #endif
-    unsigned bpp = dst->format->BytesPerPixel;
+    const unsigned bpp = dst->format->BytesPerPixel;
     unsigned cx;
     unsigned cy;
-    unsigned charWidth = console_get_char_width(console);
-    unsigned charHeight = console_get_char_height(console);
+    const unsigned charWidth = console_get_char_width(console);
+    const unsigned charHeight = console_get_char_height(console);
     Uint8 * pixels = (Uint8 *)dst->pixels + y * charHeight * dst->pitch + x * charWidth * bpp;
-    Uint16 pitch = dst->pitch;
-    unsigned char * bitmap_data = g_fontBitmap + ((unsigned)c) * charWidth * charHeight * sizeof(unsigned char);
+    const Uint16 pitch = dst->pitch;
+    const unsigned char * bitmap_data = g_fontBitmap + ((unsigned)c) * charWidth * charHeight * sizeof(unsigned char);
     for (cy = 0; cy < charHeight; ++cy) {
         Uint32 * dst_ptr = (Uint32*)pixels;
         for (cx = 0; cx < charWidth; ++cx) {
@@ -102,19 +107,15 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
 }
 
 #ifdef _DEBUG
-#if 0
+#if 1
 static void render_font_surface(console_t console, SDL_Surface * dst) {
-    SDL_Rect srect;
-    SDL_Rect drect;
-    srect.x = 0;
-    srect.y = 0;
-    srect.w = console_get_char_width(console) * 16;
-    srect.h = console_get_char_height(console) * 16;
-    drect.x = srect.x;
-    drect.y = srect.y;
-    drect.w = srect.w;
-    drect.h = srect.h;
-    SDL_BlitSurface(g_fontSurface, &srect, dst, &drect);
+    unsigned y;
+    unsigned x;
+    for(y = 0; y < 16; ++y) {
+        for(x = 0; x < 16; ++x) {
+            render_char(console, dst, x, y, y * 16 + x, 7);
+        }
+    }
 }
 #endif
 #endif
@@ -372,16 +373,22 @@ int SDL_console_run_frames(unsigned frameCount) {
                 break;
             }
         }
-
+#ifdef _DEBUG
+#if 0
+        render_font_surface(g_console, g_screenSurface);
+#endif
+#endif
         console_blink_cursor(g_console);
         SDL_Flip(g_screenSurface);
     }
     return 0;
 }
 
-void SDL_console_init(console_t console){
+console_t SDL_console_init(console_t console, font_id_t font){
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+#ifdef _DEBUG
         printf("%s: Unable to initialize SDL: %s\n", __FUNCTION__, SDL_GetError());
+#endif
         exit(1);
     }
 
@@ -392,23 +399,24 @@ void SDL_console_init(console_t console){
                                        flags);
 
     if (g_screenSurface == NULL) {
+#ifdef _DEBUG
         printf("%s: Unable to set %dx%dx%d video mode: %s\n",
                 __FUNCTION__,
                 SCREEN_WIDTH,
                 SCREEN_HEIGHT,
                 SCREEN_BPP,
                 SDL_GetError());
+#endif
         exit(1);
     }
 
     if(console == NULL) {
-        g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT);
+        g_console = console_alloc(SCREEN_WIDTH, SCREEN_HEIGHT, font);
         g_ownConsole = true;
     } else {
         g_console = console;
         g_ownConsole = false;
     }
-    console_set_font(g_console, FONT_8x16);
     console_set_callback(g_console, console_render_callback, g_screenSurface);
     console_clear(g_console);
     console_set_attribute(g_console, 1);
@@ -430,6 +438,7 @@ void SDL_console_init(console_t console){
         return;
     }
 #endif
+    return g_console;
 }
 
 console_t SDL_console_get() {
