@@ -71,6 +71,8 @@ static void render_cursor(console_t console, SDL_Surface * dst, Sint16 x, Sint16
 }
 
 static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y, unsigned char c, unsigned char a) {
+    if(x >= console_get_width(console) || y >= console_get_height(console))
+        return;
     if (SDL_LockSurface(dst) != 0)
         return;
     const Uint32 foreColor = g_palette[a & 0xf];
@@ -107,7 +109,7 @@ static void render_char(console_t console, SDL_Surface * dst, Sint16 x, Sint16 y
 }
 
 #ifdef _DEBUG
-#if 1
+#if 0
 static void render_font_surface(console_t console, SDL_Surface * dst) {
     unsigned y;
     unsigned x;
@@ -123,6 +125,27 @@ static void render_font_surface(console_t console, SDL_Surface * dst) {
 static void console_render_callback(console_t console, console_update_t * u, void * data) {
     SDL_Surface * screen = (SDL_Surface *)data;
     switch(u->type) {
+    case CONSOLE_UPDATE_FONT:
+        render_init_font(console, screen);
+        break;
+    case CONSOLE_UPDATE_PALETTE:
+    case CONSOLE_UPDATE_REFRESH: {
+            unsigned x;
+            unsigned y;
+            unsigned w = console_get_width(console);
+            unsigned h = console_get_height(console);
+            for(y = 0; y < h; ++y) {
+                for(x = 0; x < w; ++x) {
+                    render_char(console,
+                                screen,
+                                x,
+                                y,
+                                console_get_character_at(console, x, y),
+                                console_get_attribute_at(console, x, y));
+                }
+            }
+        }
+        break;
     case CONSOLE_UPDATE_CHAR:
         render_char(console,
                     screen,
